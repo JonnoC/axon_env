@@ -1,0 +1,73 @@
+version: "3"
+
+services:
+  zoo:
+    image: cfei/zookeeper
+    container_name: zookeeper
+    restart: always
+    ports:
+      - 2181:2181
+      - 2888:2888
+      - 3888:3888
+    environment:
+      ZOO_ID: 1
+      ZOO_PORT: 2181
+
+  kafka1:
+    image: cfei/kafka
+    container_name: kafka
+    restart: always
+    ports:
+      - 9092:9092
+      - 9093:9093
+    volumes:
+      - ./kafka/data:/data/kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zoo:2181
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://localhost:9093,EXTERNAL://localhost:9092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
+    depends_on:
+      - zoo
+
+  mariadb:
+    image: mariadb
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: njiklop
+      MYSQL_DATABASE: axon
+      MYSQL_USER: axon
+      MYSQL_PASSWORD: axon
+
+  consul:
+    image: hashicorp/consul
+    container_name: consul-server
+    restart: always
+    ports:
+      - 8500:8500
+      - 8600:8600/tcp
+      - 8600:8600/udp
+    volumes:
+      - ./consul/server.json:/consul/config/server.json:ro
+    command: 'agent'
+
+  elasticsearch:
+    image: elasticsearch:7.12.1
+    container_name: elasticsearch
+    restart: always
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "MAX_LOCKED_MEMORY=unlimited"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./elastic/data:/usr/share/elasticsearch/data
